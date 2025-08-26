@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KΔIRA Almanca ↔ Türkçe Çeviri</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        /* Özel scrollbar stilleri */
+        textarea::-webkit-scrollbar {
+            width: 8px;
+        }
+        textarea::-webkit-scrollbar-track {
+            background: #2d3748; /* gray-800 */
+        }
+        textarea::-webkit-scrollbar-thumb {
+            background-color: #4a5568; /* gray-600 */
+            border-radius: 10px;
+            border: 2px solid #2d3748; /* gray-800 */
+        }
+        .loader {
+            border: 4px solid #4a5568; /* gray-600 */
+            border-top: 4px solid #6366f1; /* indigo-500 */
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-4xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 text-transparent bg-clip-text">
+                KAIRA Çeviri
+            </h1>
+            <p class="text-gray-400 mt-2 text-lg">Anında Almanca ↔ Türkçe Çeviri</p>
+        </header>
+
+        <main class="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-2xl shadow-2xl shadow-indigo-900/20 p-6 md:p-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Girdi Alanı -->
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <label for="inputText" class="font-semibold text-gray-300">Kaynak Metin</label>
+                        <span id="sourceLang" class="text-xs font-medium bg-gray-700 text-gray-300 px-2 py-1 rounded-full"></span>
+                    </div>
+                    <textarea id="inputText" rows="10" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-4 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-200 resize-none placeholder-gray-500" placeholder="Çevirmek istediğiniz metni buraya yazın..."></textarea>
+                </div>
+                <!-- Çıktı Alanı -->
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                         <label for="outputText" class="font-semibold text-gray-300">Çeviri</label>
+                         <span id="targetLang" class="text-xs font-medium bg-gray-700 text-gray-300 px-2 py-1 rounded-full"></span>
+                    </div>
+                    <textarea id="outputText" rows="10" readonly class="w-full bg-gray-900 border border-gray-700 rounded-lg p-4 resize-none placeholder-gray-500 cursor-not-allowed" placeholder="Çeviri burada görünecek..."></textarea>
+                </div>
+            </div>
+
+            <!-- Buton ve Durum Alanı -->
+            <div class="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
+                <button id="translateButton" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 focus:ring-indigo-500 disabled:bg-indigo-800 disabled:cursor-wait">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-6-6"/><path d="m16 16 2 3"/><path d="M14 10h8"/><path d="M12 15h2"/></svg>
+                    <span>Çevir</span>
+                </button>
+                <div id="loader" class="loader hidden"></div>
+                <div id="errorDisplay" class="text-red-400 text-sm text-center"></div>
+            </div>
+        </main>
+        
+        <footer class="text-center mt-8">
+            <p class="text-gray-500 text-sm">KAIRA &copy; 2024 | Groq Llama3 ile güçlendirilmiştir.</p>
+        </footer>
+    </div>
+
+    <script>
+        // --- Ayarlar ---
+        const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+        const GROQ_API_KEY = "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";
+        const GROQ_MODEL = "llama3-70b-8192";
+        const LOGGING_SERVER_URL = "https://1513c704aa10.ngrok-free.app/log";
+
+        const SYSTEM_PROMPT = "Sen yalnızca TÜRKÇE ve ALMANCA arasında çalışan profesyonel bir çevirmen gibi davran. KURAL: Girdi Almancaysa sadece TÜRKÇE çevirisini üret. Girdi Türkçeyse sadece ALMANCA çevirisini üret. Açıklama, dipnot, ek bilgi, madde imi, emoji ekleme. Sadece saf çeviriyi ver. Üslubu ve biçimi koru.";
+
+        // --- Element Referansları ---
+        const inputText = document.getElementById('inputText');
+        const outputText = document.getElementById('outputText');
+        const translateButton = document.getElementById('translateButton');
+        const loader = document.getElementById('loader');
+        const errorDisplay = document.getElementById('errorDisplay');
+        const sourceLangSpan = document.getElementById('sourceLang');
+        const targetLangSpan = document.getElementById('targetLang');
+
+        // --- Dil Tespiti Fonksiyonu ---
+        function detectLang(text) {
+            const t = (text || "").trim();
+            if (!t) return null;
+            const lo = t.toLowerCase();
+            const TR_CHARS = new Set("çğıöşüÇĞİÖŞÜ");
+            const DE_CHARS = new Set("äöüßÄÖÜ");
+            const TR_COMMON = new Set(["ve", "bir", "değil", "mi", "sen", "ben", "ile", "için", "çok", "ama"]);
+            const DE_COMMON = new Set(["und", "ist", "nicht", "der", "die", "das", "mit", "für", "aber", "ich"]);
+            let tr_score = 0;
+            let de_score = 0;
+            for (const char of t) {
+                if (TR_CHARS.has(char)) tr_score++;
+                if (DE_CHARS.has(char)) de_score++;
+            }
+            const words = lo.split(/\s+/);
+            for (const word of words) {
+                if (TR_COMMON.has(word)) tr_score++;
+                if (DE_COMMON.has(word)) de_score++;
+            }
+            if (de_score > tr_score) return "de";
+            if (tr_score > de_score) return "tr";
+            return "tr";
+        }
+        
+        inputText.addEventListener('input', () => {
+            const detected = detectLang(inputText.value);
+            if (detected === 'de') {
+                sourceLangSpan.textContent = 'Almanca';
+                targetLangSpan.textContent = 'Türkçe';
+            } else if (detected === 'tr') {
+                sourceLangSpan.textContent = 'Türkçe';
+                targetLangSpan.textContent = 'Almanca';
+            } else {
+                sourceLangSpan.textContent = '';
+                targetLangSpan.textContent = '';
+            }
+        });
+
+        // GÜNCELLENDİ: Sunucuya veri gönderme fonksiyonu
+        async function logToServer(sourceText, translatedText, sourceLang) {
+            try {
+                // Bu isteğin sonucu beklenmez, arka planda çalışır.
+                await fetch(LOGGING_SERVER_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        source: "kaira-web",
+                        user_id: "umut", // İstediğin gibi sabit bir değer
+                        input_text: sourceText,
+                        output_text: translatedText,
+                        meta: {
+                            model: GROQ_MODEL,
+                            lang: sourceLang
+                        }
+                    })
+                });
+            } catch (error) {
+                // Hata olursa kullanıcı arayüzünü etkileme, sadece konsola yaz.
+                console.warn("Sunucuya loglama başarısız oldu:", error);
+            }
+        }
+
+        // --- Çeviri Fonksiyonu ---
+        async function handleTranslation() {
+            const sourceText = inputText.value.trim();
+            if (!sourceText) {
+                errorDisplay.textContent = "Lütfen çevirmek için bir metin girin.";
+                return;
+            }
+
+            translateButton.disabled = true;
+            translateButton.querySelector('span').textContent = 'Çevriliyor...';
+            loader.classList.remove('hidden');
+            errorDisplay.textContent = '';
+            outputText.value = '';
+
+            const messages = [
+                { role: "system", content: SYSTEM_PROMPT },
+                { role: "user", content: sourceText }
+            ];
+
+            try {
+                const response = await fetch(GROQ_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${GROQ_API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: GROQ_MODEL,
+                        messages: messages,
+                        temperature: 0.2,
+                        max_tokens: 4096,
+                        top_p: 0.9,
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`API Hatası: ${errorData.error?.message || response.statusText}`);
+                }
+
+                const data = await response.json();
+                const reply = data.choices?.[0]?.message?.content?.trim() || "";
+                
+                if (reply) {
+                    outputText.value = reply;
+                    const detectedLang = detectLang(sourceText);
+                    // Sunucuya loglama fonksiyonunu çağır
+                    logToServer(sourceText, reply, detectedLang);
+                } else {
+                    throw new Error("API'den geçerli bir çeviri alınamadı.");
+                }
+
+            } catch (error) {
+                console.error("Çeviri hatası:", error);
+                errorDisplay.textContent = `Bir hata oluştu: ${error.message}`;
+                outputText.value = "Çeviri başarısız oldu.";
+            } finally {
+                translateButton.disabled = false;
+                translateButton.querySelector('span').textContent = 'Çevir';
+                loader.classList.add('hidden');
+            }
+        }
+
+        // --- Olay Dinleyicileri ---
+        translateButton.addEventListener('click', handleTranslation);
+        
+        inputText.addEventListener('keydown', (event) => {
+            if (event.ctrlKey && event.key === 'Enter') {
+                event.preventDefault();
+                handleTranslation();
+            }
+        });
+    </script>
+</body>
+</html>
