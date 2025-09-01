@@ -255,6 +255,7 @@
                     <div class="space-y-2">
                          <label for="system-prompt" class="block text-sm font-medium text-gray-400">Sistem Promptu</label>
                          <textarea id="system-prompt" rows="3" placeholder="Modelin nasıl davranmasını istersin?" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
+                         <button id="apply-system-prompt" type="button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg">Promptu Uygula</button>
                     </div>
                 </div>
                 <!-- API Anahtarı Alanları (opsiyonel giriş + sunucudan çekme) -->
@@ -539,12 +540,19 @@
         const providerSelection = chatView.querySelector('#provider-selection');
         const modelSelect = chatView.querySelector('#model-select');
         const systemPromptInput = chatView.querySelector('#system-prompt');
+        const applySystemPromptBtn = chatView.querySelector('#apply-system-prompt');
+        let currentSystemPrompt = systemPromptInput.value.trim();
         const chatHistoryDiv = chatView.querySelector('#chat-history');
         const userInput = chatView.querySelector('#user-input');
         const sendButton = chatView.querySelector('#send-button');
         const clearChatButton = chatView.querySelector('#clear-chat');
         const loader = chatView.querySelector('#loader');
         const errorMessageDiv = chatView.querySelector('#error-message');
+
+        applySystemPromptBtn.addEventListener('click', () => {
+            currentSystemPrompt = systemPromptInput.value.trim();
+            localStorage.setItem('universalSystemPrompt', currentSystemPrompt);
+        });
 
         // Chat-only interactive event safety (capture phase)
         ['click','mousedown','mouseup','keydown','keypress','keyup','contextmenu'].forEach(type => {
@@ -648,6 +656,11 @@
             if (savedGroqKey) groqApiKeyInput.value = savedGroqKey;
             const savedGoogleKey = localStorage.getItem('googleApiKey');
             if (savedGoogleKey) googleApiKeyInput.value = savedGoogleKey;
+            const savedPrompt = localStorage.getItem('universalSystemPrompt');
+            if (savedPrompt) {
+                systemPromptInput.value = savedPrompt;
+                currentSystemPrompt = savedPrompt;
+            }
         }
 
         async function fetchApiKeys() {
@@ -679,7 +692,7 @@
             const selectedProvider = chatView.querySelector('input[name="provider"]:checked').value;
             const selectedModel = modelSelect.value;
             const apiKey = selectedProvider === 'groq' ? groqApiKeyInput.value.trim() : googleApiKeyInput.value.trim();
-            const systemPrompt = systemPromptInput.value.trim();
+            const systemPrompt = currentSystemPrompt;
             const userMessage = userInput.value.trim();
 
             if (!apiKey) {
@@ -898,6 +911,8 @@
         const groqApiKeyInput = document.getElementById('groq-api-key');
         const googleApiKeyInput = document.getElementById('google-api-key');
         const systemPromptInput = document.getElementById('system-prompt');
+        const applySystemPromptBtn = document.getElementById('apply-system-prompt');
+        let currentSystemPrompt = systemPromptInput.value.trim();
         const chatHistoryDiv = document.getElementById('chat-history');
         const userInput = document.getElementById('user-input');
         const sendButton = document.getElementById('send-button');
@@ -909,10 +924,15 @@
         const toggleGroqKeyBtn = document.getElementById('toggle-groq-key');
         const toggleGoogleKeyBtn = document.getElementById('toggle-google-key');
 
-function toggleMask(inputEl, btnEl){
-    inputEl.type = inputEl.type === 'password' ? 'text' : 'password';
-    btnEl.classList.toggle('text-yellow-300');
-}
+        function toggleMask(inputEl, btnEl){
+            inputEl.type = inputEl.type === 'password' ? 'text' : 'password';
+            btnEl.classList.toggle('text-yellow-300');
+        }
+
+        applySystemPromptBtn.addEventListener('click', () => {
+            currentSystemPrompt = systemPromptInput.value.trim();
+            localStorage.setItem('universalSystemPrompt', currentSystemPrompt);
+        });
 
         // --- Model Bilgileri ---
         const PROVIDERS = {
@@ -1003,13 +1023,18 @@ function toggleMask(inputEl, btnEl){
             if (savedGoogleKey) {
                 googleApiKeyInput.value = savedGoogleKey;
             }
+            const savedPrompt = localStorage.getItem('universalSystemPrompt');
+            if (savedPrompt) {
+                systemPromptInput.value = savedPrompt;
+                currentSystemPrompt = savedPrompt;
+            }
         }
 
         async function handleSend() {
             const selectedProvider = document.querySelector('input[name="provider"]:checked').value;
             const selectedModel = modelSelect.value;
             const apiKey = selectedProvider === 'groq' ? groqApiKeyInput.value.trim() : googleApiKeyInput.value.trim();
-            const systemPrompt = systemPromptInput.value.trim();
+            const systemPrompt = currentSystemPrompt;
             const userMessage = userInput.value.trim();
 
             if (!apiKey) {
