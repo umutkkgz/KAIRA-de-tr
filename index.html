@@ -583,12 +583,15 @@
         systemPromptInput.addEventListener('input', updatePromptStatus);
 
         // Chat-only interactive event safety (capture phase)
+        // Not: Sohbet içindeki etkileşimleri engelleME; sadece dışarıya sızanları durdur
         ['click','mousedown','mouseup','keydown','keypress','keyup','contextmenu'].forEach(type => {
             window.addEventListener(type, function(ev){
                 const chatActive = document.getElementById('chat-view')?.classList.contains('active');
                 if (!chatActive) return;
                 const t = ev.target;
                 if (!t) return;
+                // Eğer olay chat-view içinde gerçekleşiyorsa bırak (bizim handler'lar çalışsın)
+                if (t.closest && t.closest('#chat-view')) return;
                 const isInteractive = t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.tagName === 'BUTTON' || t.isContentEditable || t.closest('[role="button"]');
                 if (isInteractive) {
                     ev.stopImmediatePropagation();
