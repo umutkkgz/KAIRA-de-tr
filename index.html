@@ -1819,6 +1819,7 @@
 </script>
     <!-- DÜZELTME: Ana Kontrol Script'i en sona taşındı -->
     <script type="module">
+        import { escapeHTML, angularSep } from './js/utils.js';
         // --- GLOBAL KONTROL ---
         const views = document.querySelectorAll('.view');
         const selectAfterlifeBtn = document.getElementById('select-afterlife');
@@ -2565,15 +2566,7 @@ window.addEventListener('error', (e) => {
               const maxSep = Math.max(...planets.map(p => angularSep(mra, mdec, Number(p.ra), Number(p.dec))));
               __aladin.setFov(Math.min(60, Math.max(2, maxSep * 2.5)));
             }
-            function angularSep(ra1, dec1, ra2, dec2){
-              const d2r = Math.PI/180; ra1*=d2r; dec1*=d2r; ra2*=d2r; dec2*=d2r;
-              const s = Math.acos(Math.sin(dec1)*Math.sin(dec2) + Math.cos(dec1)*Math.cos(dec2)*Math.cos(ra1-ra2));
-              return s / d2r;
-            }
-
-            function escapeHTML(s){
-                return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-            }
+            
             function activateNasaTab(targetId){
                 const tabs = document.querySelectorAll('#nasa-view .nasa-tab');
                 const sections = document.querySelectorAll('#nasa-view .nasa-content');
