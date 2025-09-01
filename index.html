@@ -1781,12 +1781,14 @@
     }
   } catch(_){ /* noop */ }
 
-  // Global capture: only a **trusted** click on #mic-btn toggles consent ON
+  // Global capture: only a **trusted** click on a mic button toggles consent ON
   window.addEventListener('click', function(ev){
     const t = ev.target;
     if (!ev.isTrusted) return; // ignore synthetic clicks
     if (!t) return;
-    const mic = (t.id === 'mic-btn') ? t : (t.closest ? t.closest('#mic-btn') : null);
+    const mic = (t.id === 'mic-btn' || t.id === 'asistan-mic-btn')
+      ? t
+      : (t.closest ? t.closest('#mic-btn, #asistan-mic-btn') : null);
     if (mic) {
       window.__micExplicitConsent = true;
       console.log('[KAIRA] Microphone explicitly enabled by user.');
@@ -2031,6 +2033,19 @@ window.addEventListener('error', (e) => {
                 animateDemo();
                 // Ensure the mic button grants consent on trusted taps
                 const mic = document.getElementById('mic-btn');
+                if (mic && !mic.dataset.kairaConsentBound) {
+                  mic.addEventListener('click', (e) => {
+                    if (e.isTrusted && window.KAIRA_MIC_GUARD) window.KAIRA_MIC_GUARD.allow();
+                  }, { capture: true });
+                  mic.dataset.kairaConsentBound = '1';
+                }
+            } else if (viewName === 'asistan') {
+                // Block any automatic microphone starts until user explicitly taps mic
+                if (window.KAIRA_MIC_GUARD && typeof window.KAIRA_MIC_GUARD.revoke === 'function') {
+                  window.KAIRA_MIC_GUARD.revoke();
+                }
+                // Ensure the asistan mic button grants consent on trusted taps
+                const mic = document.getElementById('asistan-mic-btn');
                 if (mic && !mic.dataset.kairaConsentBound) {
                   mic.addEventListener('click', (e) => {
                     if (e.isTrusted && window.KAIRA_MIC_GUARD) window.KAIRA_MIC_GUARD.allow();
