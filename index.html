@@ -253,7 +253,9 @@
                     </div>
                 </div>
                     <div class="space-y-2">
-                         <label for="system-prompt" class="block text-sm font-medium text-gray-400">Sistem Promptu</label>
+                         <label for="system-prompt" class="block text-sm font-medium text-gray-400">Sistem Promptu
+                           <span id="system-prompt-status" class="ml-2 align-middle text-xs px-2 py-0.5 rounded border border-gray-600 bg-gray-700/60 text-gray-300">Uygulanmadı</span>
+                         </label>
                          <textarea id="system-prompt" rows="3" placeholder="Modelin nasıl davranmasını istersin?" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
                          <button id="apply-system-prompt" type="button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg">Promptu Uygula</button>
                     </div>
@@ -549,10 +551,36 @@
         const loader = chatView.querySelector('#loader');
         const errorMessageDiv = chatView.querySelector('#error-message');
 
+        // --- Sistem Promptu durum rozetini güncelle ---
+        const promptStatus = chatView.querySelector('#system-prompt-status');
+        function setPromptStatus(state){
+            if (!promptStatus) return;
+            promptStatus.dataset.state = state;
+            // Temel sınıf
+            promptStatus.className = 'ml-2 align-middle text-xs px-2 py-0.5 rounded border ';
+            if (state === 'applied') {
+                promptStatus.textContent = 'Uygulandı';
+                promptStatus.className += 'border-emerald-600/40 bg-emerald-600/20 text-emerald-300';
+            } else if (state === 'dirty') {
+                promptStatus.textContent = 'Değişiklik var';
+                promptStatus.className += 'border-amber-600/40 bg-amber-600/20 text-amber-300';
+            } else {
+                promptStatus.textContent = 'Uygulanmadı';
+                promptStatus.className += 'border-gray-600 bg-gray-700/60 text-gray-300';
+            }
+        }
+        function updatePromptStatus(){
+            const inputVal = systemPromptInput.value.trim();
+            if (currentSystemPrompt && inputVal === currentSystemPrompt) return setPromptStatus('applied');
+            if (!currentSystemPrompt && !inputVal) return setPromptStatus('none');
+            return setPromptStatus('dirty');
+        }
         applySystemPromptBtn.addEventListener('click', () => {
             currentSystemPrompt = systemPromptInput.value.trim();
             localStorage.setItem('universalSystemPrompt', currentSystemPrompt);
+            updatePromptStatus();
         });
+        systemPromptInput.addEventListener('input', updatePromptStatus);
 
         // Chat-only interactive event safety (capture phase)
         ['click','mousedown','mouseup','keydown','keypress','keyup','contextmenu'].forEach(type => {
@@ -797,6 +825,7 @@
         updateModelList();
         loadChatHistory();
         loadSettings();
+        updatePromptStatus();
         fetchApiKeys();
     };
     </script>
@@ -929,10 +958,35 @@
             btnEl.classList.toggle('text-yellow-300');
         }
 
+        // --- Sistem Promptu durum rozetini güncelle ---
+        const promptStatus2 = document.getElementById('system-prompt-status');
+        function setPromptStatus2(state){
+            if (!promptStatus2) return;
+            promptStatus2.dataset.state = state;
+            promptStatus2.className = 'ml-2 align-middle text-xs px-2 py-0.5 rounded border ';
+            if (state === 'applied') {
+                promptStatus2.textContent = 'Uygulandı';
+                promptStatus2.className += 'border-emerald-600/40 bg-emerald-600/20 text-emerald-300';
+            } else if (state === 'dirty') {
+                promptStatus2.textContent = 'Değişiklik var';
+                promptStatus2.className += 'border-amber-600/40 bg-amber-600/20 text-amber-300';
+            } else {
+                promptStatus2.textContent = 'Uygulanmadı';
+                promptStatus2.className += 'border-gray-600 bg-gray-700/60 text-gray-300';
+            }
+        }
+        function updatePromptStatus2(){
+            const inputVal = systemPromptInput.value.trim();
+            if (currentSystemPrompt && inputVal === currentSystemPrompt) return setPromptStatus2('applied');
+            if (!currentSystemPrompt && !inputVal) return setPromptStatus2('none');
+            return setPromptStatus2('dirty');
+        }
         applySystemPromptBtn.addEventListener('click', () => {
             currentSystemPrompt = systemPromptInput.value.trim();
             localStorage.setItem('universalSystemPrompt', currentSystemPrompt);
+            updatePromptStatus2();
         });
+        systemPromptInput.addEventListener('input', updatePromptStatus2);
 
         // --- Model Bilgileri ---
         const PROVIDERS = {
@@ -1156,6 +1210,7 @@
         updateModelList();
         loadChatHistory();
         loadSettings(); // YENİ: Kaydedilmiş ayarları yükle
+        updatePromptStatus2();
 
     </script>
 
