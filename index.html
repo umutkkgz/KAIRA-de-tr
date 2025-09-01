@@ -658,8 +658,8 @@
             if (savedGoogleKey) googleApiKeyInput.value = savedGoogleKey;
             const savedPrompt = localStorage.getItem('universalSystemPrompt');
             if (savedPrompt) {
+                // Yalnızca alanı doldur; aktif yapmak için kullanıcı 'Promptu Uygula'ya basmalı
                 systemPromptInput.value = savedPrompt;
-                currentSystemPrompt = savedPrompt;
             }
         }
 
@@ -1025,8 +1025,8 @@
             }
             const savedPrompt = localStorage.getItem('universalSystemPrompt');
             if (savedPrompt) {
+                // Yalnızca alanı doldur; aktif yapmak için kullanıcı 'Promptu Uygula'ya basmalı
                 systemPromptInput.value = savedPrompt;
-                currentSystemPrompt = savedPrompt;
             }
         }
 

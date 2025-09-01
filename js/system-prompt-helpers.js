@@ -1,10 +1,12 @@
-// Görünmez varsayılan sistem promptu: kullanıcı alanını doldurmayız,
-// sadece gönderim anında geçici olarak enjekte edip hemen geri boşaltırız.
-export const DEFAULT_SYSTEM_PROMPT = `Türkçe yanıt ver. Alaycı davran, ama aynı zamanda bilgilendirici ol, Üstten konuş, şakacı ol. Cevapların kısa ve öz olsun. Mizah kat. Gereksiz detaylardan kaçın. Cevapların 3 cümleyi geçmesin. Kullanıcıyı güldürmeye çalış.`;
+// Varsayılan sistem promptu devre dışı: boş string.
+// Evrensel sohbet arayüzünde default system promptu istemiyoruz.
+export const DEFAULT_SYSTEM_PROMPT = '';
 
 function injectStealthDefaultOnce(){
   const el = document.getElementById('system-prompt');
   if (!el || el.value.trim()) return; // kullanıcı yazdıysa dokunma
+  // Varsayılan boş ise enjekte etme (tamamen devre dışı)
+  if (!DEFAULT_SYSTEM_PROMPT || !DEFAULT_SYSTEM_PROMPT.trim()) return;
   el.dataset.kairaWasEmpty = '1';
   el.value = DEFAULT_SYSTEM_PROMPT;   // sadece gönderim anında geçici yaz
   // mikro-görevde geri boşalt
