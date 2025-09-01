@@ -281,7 +281,7 @@
             <div class="flex-grow bg-gray-800 rounded-2xl p-4 border border-gray-700 flex flex-col">
                 <div class="flex justify-between items-center mb-2 border-b border-gray-700 pb-2">
                      <h2 class="text-xl font-semibold text-white">Sohbet</h2>
-                     <button id="clear-chat" type="button" onclick="window.__kairaClearChat && window.__kairaClearChat(); return false;" class="text-sm text-gray-400 hover:text-white">Sohbeti Temizle</button>
+                      <button id="clear-chat" type="button" class="text-sm text-gray-400 hover:text-white">Sohbeti Temizle</button>
                 </div>
                 <div id="chat-history" class="flex-grow overflow-y-auto space-y-4 p-2 flex flex-col"></div>
                 <div id="loader" class="hidden self-center my-4">
@@ -404,7 +404,6 @@
         </div>
     </div>
     </div>
-<script src="js/system-prompt-helpers.js"></script>
     <!-- Tanılama / Ağ Hatası Yüzeyleme -->
 <script id="diagnostics">
 (function(){
@@ -2764,6 +2763,6 @@ function toggleMask(inputEl, btnEl){
     <script type="module" src="js/intro-animation.js"></script>
 <script src="js/kaira-debug-toggle.js"></script>
 <script src="js/form-input-safety.js"></script>
-<script src="js/default-system-prompt.js"></script>
+<script type="module" src="js/system-prompt.js"></script>
 </body>
 </html>
