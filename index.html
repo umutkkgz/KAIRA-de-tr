@@ -1821,6 +1821,10 @@
 </script>
     <!-- DÜZELTME: Ana Kontrol Script'i en sona taşındı -->
     <script type="module">
+import { fetchNasaKeys } from './js/nasa-api.js';
+import { initApod } from './js/nasa-apod.js';
+import { initMars } from './js/nasa-mars.js';
+import { ensureAladinReady } from './js/exoplanet-map.js';
         // --- GLOBAL KONTROL ---
         const views = document.querySelectorAll('.view');
         const selectAfterlifeBtn = document.getElementById('select-afterlife');
@@ -2007,6 +2011,40 @@ window.addEventListener('error', (e) => {
 }, true);
         let nasaInitialized = false;
 
+async function initNasaView(){
+    console.log('[NASA] initNasaView start');
+    const nasaView = document.getElementById('nasa-view');
+    const nav = nasaView.querySelector('nav');
+    const sections = nasaView.querySelectorAll('.nasa-content');
+    function setActiveTab(targetId){
+        nasaView.querySelectorAll('.nasa-tab').forEach(b => b.classList.toggle('active', b.dataset.target === targetId));
+        sections.forEach(s => s.classList.toggle('active', s.id === targetId));
+    }
+    let marsInit = false;
+    if (nav && !nav.dataset.bound){
+        nav.addEventListener('click', (ev) => {
+            const btn = ev.target.closest('.nasa-tab');
+            if (!btn) return;
+            ev.preventDefault();
+            const target = btn.dataset.target;
+            setActiveTab(target);
+            if (target === 'apod-container'){
+                initApod();
+            } else if (target === 'mars-container'){
+                if (!marsInit){ initMars(); marsInit = true; }
+            }
+        });
+        nav.dataset.bound = '1';
+    }
+    const apiStatus = document.getElementById('nasa-api-status');
+    const base = window.API_PROXY_BASE || '';
+    await fetchNasaKeys(base, apiStatus);
+    setActiveTab('apod-container');
+    initApod();
+    ensureAladinReady();
+}
+
+
         function switchView(viewName) {
             views.forEach(v => v.classList.remove('active'));
             document.getElementById(`${viewName}-view`).classList.add('active');
@@ -2090,7 +2128,7 @@ window.addEventListener('error', (e) => {
                 }
             }
             else if (viewName === 'nasa') {
-                if (!nasaInitialized) { initNasa(); nasaInitialized = true; }
+                if (!nasaInitialized) { initNasaView(); nasaInitialized = true; }
             }
         }
 
@@ -2759,8 +2797,6 @@ function toggleMask(inputEl, btnEl){
         });
 
     </script>
-    <script type="module" src="js/exoplanet-map.js"></script>
-    <script type="module" src="js/nasa-apod.js"></script>
     <script type="module" src="js/intro-animation.js"></script>
 <script src="js/kaira-debug-toggle.js"></script>
 <script src="js/form-input-safety.js"></script>
