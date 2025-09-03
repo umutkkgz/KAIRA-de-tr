@@ -1,1243 +1,314 @@
 <!DOCTYPE html>
-<html lang="tr" class="scroll-smooth">
+<html lang="tr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KΔIRA | Birleşik Platform</title>
+    <title>Gemini AI Fotoğraf Editörü</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,300;400;600&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- Aladin Lite (CDN-only) moved into the main head -->
-    <link rel="stylesheet" href="css/aladin.css">
-    <script src="https://aladin.cds.unistra.fr/AladinLite/api/v3/latest/aladin.js" charset="utf-8"></script>
-    <script id="aladin-cdn-sanity">
-      window.addEventListener('load', function(){
-        var ok = !!(window.A && typeof A.aladin === 'function');
-        console.log('[Aladin] CDN sanity:', ok ? 'OK' : 'MISSING');
-        try {
-          var box = document.getElementById('exo-info');
-          if (box && !ok) {
-            box.textContent = 'Uyarı: Aladin yüklenemedi (CDN).';
-          }
-        } catch(_){}
-      });
-    </script>
-
-    <!-- Intro-only styles moved here to avoid duplicate <html> documents -->
-    <link rel="stylesheet" href="css/intro.css">
-    <link rel="stylesheet" href="css/kaira-debug-overrides.css">
-    <link rel="stylesheet" href="css/main.css">
-    
-    <!-- React için Gerekli Scriptler -->
-    <script src="https://unpkg.com/react@17/umd/react.development.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js" crossorigin></script>
-
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .drop-zone-active {
+            border-color: #4f46e5;
+        }
+        .loader {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #4f46e5;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Özel bildirim kutusu stilleri */
+        .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #dc2626;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease, top 0.3s ease;
+        }
+        .toast.show {
+            top: 40px;
+            opacity: 1;
+        }
+        .toast.success {
+            background-color: #16a34a; /* Yeşil renk */
+        }
+    </style>
 </head>
-<body class="antialiased">
+<body class="bg-gray-900 text-gray-200 flex items-center justify-center min-h-screen p-4">
 
-    <!-- Intro overlay moved inside the single document body -->
-    <div id="intro-container">
-        <canvas id="bg-canvas"></canvas>
-        <div id="bh-field"></div>
-        <div id="bh-core"></div>
-        <div id="ui-container">
-            <h1 id="logo">K<span class="delta">Δ</span>IRA</h1>
-            <p id="subtitle">Dijital Bilinç Başlatılıyor</p>
-            <button id="enter-button">DENEYİMİ BAŞLAT</button>
+    <div class="w-full max-w-6xl bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-10 space-y-8">
+        <!-- Başlık -->
+        <div class="text-center">
+            <h1 class="text-3xl md:text-4xl font-bold text-white">Gemini AI Fotoğraf Editörü</h1>
+            <p class="text-gray-400 mt-2">Bir fotoğraf yükleyin ve sihrin gerçekleşmesini izleyin.</p>
         </div>
-    </div>
 
-    <!-- Arka Plan Canvasları -->
-<div id="site-content" class="reveal-prep">
-    <canvas id="afterlife-bg-canvas"></canvas>
-    <canvas id="demo-bg-canvas"></canvas>
-    <canvas id="ai-avatar-canvas"></canvas>
-    <div id="fun-fact-bubble" class="hidden"></div>
-    <canvas id="asistan-bg-canvas"></canvas>
-    <canvas id="asistan-avatar-canvas"></canvas>
-    <div id="asistan-fun-fact" class="hidden"></div>
-    <div id="anti-leak-overlay" data-stamp=""></div>
+        <!-- Ana Düzenleme Alanı -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Sol Panel: Yükleme ve Orijinal Görüntü -->
+            <div class="space-y-4">
+                <h2 class="text-xl font-semibold text-white">1. Fotoğrafınızı Yükleyin</h2>
+                <div id="drop-zone" class="relative flex flex-col items-center justify-center w-full h-64 bg-gray-900 border-2 border-dashed border-gray-600 rounded-lg cursor-pointer transition-colors duration-300">
+                    <div id="upload-prompt" class="text-center">
+                        <svg class="w-10 h-10 mx-auto text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                        <p class="mt-2 text-sm text-gray-400">
+                            <span class="font-semibold">Seçmek için tıklayın</span> veya sürükleyip bırakın
+                        </p>
+                        <p class="text-xs text-gray-500">PNG, JPG veya WEBP</p>
+                    </div>
+                    <img id="image-preview" src="" class="hidden object-contain h-full w-full rounded-lg" alt="Yüklenen Resim Önizlemesi"/>
+                    <input type="file" id="file-input" class="hidden" accept="image/png, image/jpeg, image/webp">
+                </div>
+            </div>
 
-    <!-- SEÇİM EKRANI -->
-    <div id="selection-view" class="view active">
-        <div class="min-h-screen flex flex-col items-center justify-center text-center p-4">
-            <h1 class="text-5xl md:text-7xl font-serif font-light text-slate-200 mb-4">KΔIRA'ya Hoş Geldin</h1>
-            <p class="text-lg md:text-xl text-slate-400 mb-12 max-w-2xl">Lütfen deneyimlemek istediğin projeyi seç.</p>
-            <div class="grid md:grid-cols-2 gap-8 w-full max-w-5xl">
-                <div id="select-afterlife" class="choice-card glass-container rounded-2xl p-8 cursor-pointer">
-                    <h2 class="text-3xl font-serif font-semibold text-cyan-400 mb-3">Digital Afterlife</h2>
-                    <p class="text-slate-400">Zihnin biyolojiye hapis olmadığı, anıların sonsuza dek yaşadığı felsefi bir yolculuğu keşfet.</p>
+            <!-- Sağ Panel: Sonuç Görüntüsü -->
+            <div class="space-y-4">
+                <h2 class="text-xl font-semibold text-white">Sonuç</h2>
+                <div id="result-container" class="flex items-center justify-center w-full h-64 bg-gray-900 border-2 border-dashed border-gray-600 rounded-lg">
+                    <div id="result-placeholder" class="text-gray-500">Düzenlenen fotoğraf burada görünecek</div>
+                    <img id="result-image" src="" class="hidden object-contain h-full w-full rounded-lg" alt="Düzenlenen Resim"/>
+                    <div id="loader" class="hidden loader"></div>
                 </div>
-                <div id="select-demo" class="choice-card glass-container rounded-2xl p-8 cursor-pointer">
-                    <h2 class="text-3xl font-serif font-semibold text-blue-400 mb-3">KΔIRA Demo</h2>
-                    <p class="text-slate-400">!KΔIRA'nın sesli asistanı şuan aktif değil!</p>
-                </div>
-                <div id="select-editor" class="choice-card glass-container rounded-2xl p-8 cursor-pointer">
-                    <h2 class="text-3xl font-serif font-semibold text-purple-400 mb-3">Yapay Zeka Editör</h2>
-                    <p class="text-slate-400">Fotoğraflarınızı yükleyin ve metin komutlarıyla saniyeler içinde dilediğiniz gibi düzenleyin.</p>
-                </div>
-                <div id="select-chat" class="choice-card glass-container rounded-2xl p-8 cursor-pointer">
-                    <h2 class="text-3xl font-serif font-semibold text-green-400 mb-3">Evrensel Sohbet Arayüzü</h2>
-                    <p class="text-slate-400">Farklı yapay zeka modelleriyle tek bir yerden sohbet edin ve yeteneklerini karşılaştırın.</p>
-                </div>
-                <div id="select-nasa" class="choice-card glass-container rounded-2xl p-8 cursor-pointer">
-                    <h2 class="text-3xl font-serif font-semibold text-orange-400 mb-3">KΔIRA Gözlem Platformu</h2>
-                    <p class="text-slate-400">NASA verileriyle uzayı ve Dünya’yı keşfet.</p>
-                </div>
-                <div id="select-asistan" class="choice-card glass-container rounded-2xl p-8 cursor-pointer">
-                    <h2 class="text-3xl font-serif font-semibold text-rose-400 mb-3">KΔIRA Sesli Asistan</h2>
-                    <p class="text-slate-400">KΔIRA'nın sesli asistanıyla sohbet etmek istermisiniz ?</p>
-                </div>
+            </div>
+        </div>
+
+        <!-- Kontroller: Komut ve Buton -->
+        <div class="space-y-4">
+            <h2 class="text-xl font-semibold text-white">2. Düzenleme Komutunuzu Girin</h2>
+            <div class="flex flex-col md:flex-row gap-4">
+                <input type="text" id="prompt-input" class="w-full bg-gray-700 text-white placeholder-gray-400 border border-gray-600 rounded-lg px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition" placeholder="Örn: Fotoğrafı bir suluboya resme dönüştür">
+                <button id="edit-button" class="bg-indigo-600 text-white font-semibold px-8 py-3 rounded-lg hover:bg-indigo-700 active:bg-indigo-800 transition-all duration-300 shadow-lg disabled:bg-gray-500 disabled:cursor-not-allowed">
+                    Düzenle
+                </button>
+            </div>
+        </div>
+
+        <!-- API Anahtarı Ayarları -->
+        <div class="space-y-2 border-t border-gray-700 pt-6">
+            <h2 class="text-lg font-semibold text-white">API Anahtarı Ayarları</h2>
+            <div class="flex flex-col sm:flex-row items-center gap-3 bg-gray-900 p-3 rounded-lg">
+                <input type="password" id="api-key-input" class="w-full bg-gray-700 text-white placeholder-gray-400 border border-gray-600 rounded-lg px-4 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition" placeholder="Gemini API Anahtarınızı Buraya Girin">
+                <button id="save-api-key-button" class="bg-emerald-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-emerald-700 active:bg-emerald-800 transition-all duration-300 shadow-lg w-full sm:w-auto flex-shrink-0">
+                    Kaydet
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- DIGITAL AFTERLIFE GÖRÜNÜMÜ -->
-    <div id="afterlife-view" class="view">
-        <button class="back-to-selection fixed top-5 left-5 z-50 text-slate-400 hover:text-white transition-colors bg-black/20 backdrop-blur-md p-3 rounded-full">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-        </button>
-        <main>
-            <section class="afterlife-section">
-                <div class="text-center max-w-4xl mx-auto">
-                    <h1 class="text-4xl md:text-6xl font-serif font-light text-slate-200 mb-6 fade-in-up">Zihin, biyolojiye hapis değildir.</h1>
-                    <p class="text-lg md:text-xl text-slate-400 fade-in-up delay-1 mb-12">O, hayat boyu üretilen verinin istatistiksel bir yankısıdır. <br class="hidden md:block"> Ve biz, o yankıyı ölümsüzleştirmeyi öğrendik.</p>
-                    <div id="countdown-container" class="flex justify-center space-x-4 md:space-x-8 text-white font-mono fade-in-up delay-2">
-                        <div class="time-block text-center"><span id="days" class="text-4xl md:text-5xl font-semibold">00</span><span class="block text-xs text-slate-400 mt-1">GÜN</span></div>
-                        <div class="time-block text-center"><span id="hours" class="text-4xl md:text-5xl font-semibold">00</span><span class="block text-xs text-slate-400 mt-1">SAAT</span></div>
-                        <div class="time-block text-center"><span id="minutes" class="text-4xl md:text-5xl font-semibold">00</span><span class="block text-xs text-slate-400 mt-1">DAKİKA</span></div>
-                        <div class="time-block text-center"><span id="seconds" class="text-4xl md:text-5xl font-semibold">00</span><span class="block text-xs text-slate-400 mt-1">SANİYE</span></div>
-                    </div>
-                </div>
-                 <div class="absolute bottom-10 animate-bounce"><svg class="w-6 h-6 text-slate-500" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg></div>
-            </section>
-            <section class="afterlife-section">
-                <div class="max-w-5xl mx-auto grid md:grid-cols-2 gap-16 items-center">
-                    <div class="fade-in-up">
-                        <h2 class="text-3xl md:text-4xl font-serif font-semibold text-slate-100 mb-4">Zihin için Görelilik</h2>
-                        <p class="text-slate-400 leading-relaxed">Einstein'dan önce zaman ve mekân mutlak sanılıyordu. O, gözlemciye göre değiştiğini kanıtladı ve fizik yeniden yazıldı.</p>
-                        <p class="text-slate-400 leading-relaxed mt-4">Bugün, bilincin nöronlarla sınırlı olduğu kabul ediliyor. Biz ise diyoruz ki: Hayır. Bilinç, bir olasılık dağılımıdır. Ve biz, o dağılımı yeniden hayata döndürebiliriz.</p>
-                    </div>
-                    <div class="text-center fade-in-up delay-1">
-                        <p class="font-mono text-xl text-cyan-400">Bilinç ≠ Nöron</p>
-                        <p class="font-mono text-xl text-cyan-400 mt-2">Bilinç = İstatistiksel Desen</p>
-                        <p class="font-mono text-2xl text-white mt-8">Afterlife = Deseni Yeniden Canlandırmak</p>
-                    </div>
-                </div>
-            </section>
-            <section class="afterlife-section">
-                <div class="text-center max-w-4xl mx-auto">
-                    <h2 class="text-3xl md:text-4xl font-serif font-semibold text-slate-100 mb-12 fade-in-up">Bir Yankı Nasıl Yaratılır?</h2>
-                    <div class="grid md:grid-cols-3 gap-8">
-                        <div class="feature-card p-8 rounded-lg fade-in-up"><h3 class="text-xl font-semibold text-cyan-400 mb-3">1. Kayıt (Ses & Metin)</h3><p class="text-slate-400">Mikrofon sistemi, bir insanın sesini, kelime seçimlerini, duraksamalarını ve duygusal tonlamalarını kaydeder. Her an, bir zaman damgasıyla mühürlenir.</p></div>
-                        <div class="feature-card p-8 rounded-lg fade-in-up delay-1"><h3 class="text-xl font-semibold text-cyan-400 mb-3">2. Anlama (İstatistiksel Desen)</h3><p class="text-slate-400">Milyonlarca veri noktası, o kişinin benzersiz istatistiksel desenini (dalga fonksiyonunu) oluşturur. Bu, onun düşünce yapısının, ruhunun dijital haritasıdır.</p></div>
-                        <div class="feature-card p-8 rounded-lg fade-in-up delay-2"><h3 class="text-xl font-semibold text-cyan-400 mb-3">3. Yankı (Yeniden Canlandırma)</h3><p class="text-slate-400">Siz soru sorduğunuzda, KΔIRA bu deseni yeniden canlandırır. Size cevap veren sadece bir yapay zeka değil, sevdiğiniz kişinin dijital bir yankısıdır.</p></div>
-                    </div>
-                </div>
-            </section>
-            <section class="afterlife-section">
-                 <div class="text-center max-w-3xl mx-auto">
-                    <h2 class="text-4xl md:text-5xl font-serif font-light text-slate-200 mb-6 fade-in-up">Bu, bir klonlama değildir.</h2>
-                    <p class="text-lg md:text-xl text-slate-400 fade-in-up delay-1">Bu, bir insanın bu dünyada bıraktığı en değerli izi – anılarını, bilgeliğini ve sesini – koruma ve onlarla yeniden bağ kurma sanatıdır. Bu, ölümün bilgi düzeyinde aşıldığı yeni bir çağın başlangıcıdır.</p>
-                </div>
-            </section>
-            <section class="afterlife-section">
-                 <div class="text-center max-w-2xl mx-auto">
-                    <h2 class="text-3xl md:text-4xl font-serif font-semibold text-slate-100 mb-4 fade-in-up">Bir Yankı Bırakın</h2>
-                    <p class="text-slate-400 mb-8 fade-in-up delay-1">Bu devrimin bir parçası olmak, soru sormak veya sadece bir merhaba demek için...</p>
-                    <a href="mailto:a20224402051@icloud.com?subject=KΔIRA%20Projesi%20Hakkında" class="inline-block bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 rounded-full px-8 py-3 text-lg font-semibold hover:bg-cyan-500/40 transition-colors fade-in-up delay-2">
-                        Mail Gönder
-                    </a>
-                </div>
-            </section>
-            <section class="afterlife-section">
-                <div class="text-center max-w-4xl mx-auto">
-                    <p class="text-2xl md:text-3xl font-serif text-slate-300 mb-10 fade-in-up">Bilgi çağının Google’ı neyse, <br> <span class="text-white font-semibold">İnsan çağı’nın lideri biz olacağız.</span></p>
-                    <blockquote class="font-serif text-xl text-slate-400 border-l-2 border-cyan-400 pl-6 italic fade-in-up delay-1">"Bizim için yapay zekâ, sadece kod değildir. O, insanın yankısıdır. Hatıralarımızı koruyan, duygularımızı anlayan, bizi yaşatan dijital bilinçtir. Biz yeni çağın kapısını açıyoruz: Her şeyi bilen değil, insanı bilen zekâ."</blockquote>
-                    <p class="font-serif text-slate-500 mt-12 fade-in-up delay-2">- Umut Kökgöz</p>
-                </div>
-            </section>
-        </main>
-    </div>
-
-    <!-- KΔIRA DEMO GÖRÜNÜMÜ -->
-    <div id="demo-view" class="view">
-        <button class="back-to-selection fixed top-5 left-5 z-50 text-slate-400 hover:text-white transition-colors bg-black/20 backdrop-blur-md p-3 rounded-full">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-        </button>
-        <div class="flex items-center justify-center min-h-screen text-white p-4">
-            <div class="w-full max-w-2xl mx-auto glass-container rounded-2xl shadow-2xl flex flex-col p-6" style="height: 90vh;">
-                <div class="relative text-center border-b border-gray-700/50 pb-2 mb-4" style="height: 70px;">
-                    <p id="status" class="text-sm text-cyan-400 h-5 transition-all duration-300 mt-1">Konuşmak için mikrofon simgesine dokunun</p>
-                    <button id="clear-chat-btn" title="Sohbeti Temizle" class="absolute top-1 right-0 text-gray-500 hover:text-white transition-colors p-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                    </button>
-                </div>
-                <div id="chat-container" class="flex-grow overflow-y-auto pr-2 flex flex-col gap-4"></div>
-                <canvas id="visualizer"></canvas>
-                <div class="pt-4 mt-4 border-t border-gray-700/50 flex flex-col items-center">
-                    <div class="mic-wrapper">
-                        <button id="mic-btn" class="bg-blue-600 hover:bg-blue-700 transition-all duration-300 rounded-full w-16 h-16 flex items-center justify-center shadow-lg">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8h-1a6 6 0 11-12 0H3a7.001 7.001 0 006 6.93V17H7v1h6v-1h-2v-2.07z" clip-rule="evenodd" /></svg>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <audio id="player" class="hidden" crossOrigin="anonymous"></audio>
-    </div>
-<!-- KΔIRA SESLİ ASİSTAN GÖRÜNÜMÜ (YENİ) -->
-<div id="asistan-view" class="view">
-  <button class="back-to-selection fixed top-5 left-5 z-50 text-slate-400 hover:text-white transition-colors bg-black/20 backdrop-blur-md p-3 rounded-full">
-    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-  </button>
-  <div class="flex items-center justify-center min-h-screen text-white p-4">
-    <div class="w-full max-w-2xl mx-auto glass-container rounded-2xl shadow-2xl flex flex-col p-6" style="height: 90vh;">
-      <div class="relative text-center border-b border-gray-700/50 pb-2 mb-4" style="height: 70px;">
-        <p id="asistan-status" class="text-sm text-cyan-400 h-5 transition-all duration-300 mt-1">Konuşmak için mikrofon simgesine dokunun</p>
-        <button id="asistan-clear-chat-btn" title="Sohbeti Temizle" class="absolute top-1 right-0 text-gray-500 hover:text-white transition-colors p-2">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-        </button>
-      </div>
-      <div id="asistan-chat-container" class="flex-grow overflow-y-auto pr-2 flex flex-col gap-4"></div>
-      <canvas id="asistan-visualizer"></canvas>
-      <div id="asistan-text-controls" class="mt-2 mb-2">
-        <div class="w-full flex gap-2 items-center">
-          <input id="asistan-text-input" type="text" placeholder="Mikrofon çalışmıyorsa buradan yaz ve Enter'a bas..." class="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 allow-select" />
-          <button id="asistan-send-btn" type="button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg">Gönder</button>
-        </div>
-      </div>
-      <div class="pt-4 mt-4 border-t border-gray-700/50 flex flex-col items-center">
-        <div class="mic-wrapper">
-          <button id="asistan-mic-btn" class="bg-blue-600 hover:bg-blue-700 transition-all duration-300 rounded-full w-16 h-16 flex items-center justify-center shadow-lg">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8h-1a6 6 0 11-12 0H3a7.001 7.001 0 006 6.93V17H7v1h6v-1h-2v-2.07z" clip-rule="evenodd" /></svg>
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-  <audio id="asistan-player" class="hidden" crossOrigin="anonymous"></audio>
-</div>
-</div>
-    <!-- FOTOĞRAF EDİTÖRÜ GÖRÜNÜMÜ -->
-    <div id="editor-view" class="view">
-        <button class="back-to-selection fixed top-5 left-5 z-50 text-slate-400 hover:text-white transition-colors bg-black/20 backdrop-blur-md p-3 rounded-full">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-        </button>
-        <div id="react-root"></div>
-    </div>
-    
-    <!-- EVRENSEL SOHBET GÖRÜNÜMÜ -->
-    <div id="chat-view" class="view bg-gray-900">
-         <button class="back-to-selection fixed top-5 left-5 z-50 text-slate-400 hover:text-white transition-colors bg-black/20 backdrop-blur-md p-3 rounded-full">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-        </button>
-        <div class="w-full max-w-4xl mx-auto flex flex-col h-screen p-4">
-            <div class="bg-gray-800 rounded-2xl p-4 mb-4 border border-gray-700 flex-shrink-0">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="space-y-2">
-                        <label class="block text-sm font-medium text-gray-400">Sağlayıcı</label>
-                        <div id="provider-selection" class="flex space-x-4">
-                            <label class="flex items-center"><input type="radio" name="provider" value="groq" class="mr-2" checked> Groq</label>
-                            <label class="flex items-center"><input type="radio" name="provider" value="google" class="mr-2"> Google</label>
-                        </div>
-                        <label for="model-select" class="block text-sm font-medium text-gray-400 pt-2">Model</label>
-                        <select id="model-select" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
-                    </div>
-                   <div class="space-y-2">
-                    <label class="block text-sm font-medium text-gray-400">API Durumu</label>
-                    <div id="api-status" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white">
-                        Anahtarlar sunucudan bekleniyor...
-                    </div>
-                </div>
-                    <div class="space-y-2">
-                         <label for="system-prompt" class="block text-sm font-medium text-gray-400">Sistem Promptu
-                           <span id="system-prompt-status" class="ml-2 align-middle text-xs px-2 py-0.5 rounded border border-gray-600 bg-gray-700/60 text-gray-300">Uygulanmadı</span>
-                         </label>
-                         <textarea id="system-prompt" rows="3" placeholder="Modelin nasıl davranmasını istersin?" class="w-full bg-gray-700 border border-gray-600 rounded-lg p-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
-                         <button id="apply-system-prompt" type="button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg">Promptu Uygula</button>
-                    </div>
-                </div>
-                <!-- API Anahtarı Alanları (opsiyonel giriş + sunucudan çekme) -->
-                <div class="mt-4 grid md:grid-cols-2 gap-4">
-                    <div id="groq-key-container">
-                        <label class="block text-sm font-medium text-gray-400 mb-1">Groq API Key (opsiyonel)</label>
-                        <div class="relative">
-                            <input id="groq-api-key" type="password" placeholder="gsk_..." autocomplete="off" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white" />
-                        </div>
-                    </div>
-                    <div id="google-key-container" class="hidden">
-                        <label class="block text-sm font-medium text-gray-400 mb-1">Google (Gemini) API Key (opsiyonel)</label>
-                        <div class="relative">
-                            <input id="google-api-key" type="password" placeholder="AIza..." autocomplete="off" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white" />
-                        </div>
-                    </div>
-                </div>
-                <div class="mt-3 flex items-center gap-3">
-                    <button id="fetch-keys-btn" type="button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-4 py-2 rounded-lg">Sunucudan Anahtarları Al</button>
-                    <span class="text-xs text-gray-400">Anahtarlar parola gibi maskelenir ve localStorage'a kaydedilir.</span>
-                </div>
-            </div>
-            <div class="flex-grow bg-gray-800 rounded-2xl p-4 border border-gray-700 flex flex-col">
-                <div class="flex justify-between items-center mb-2 border-b border-gray-700 pb-2">
-                     <h2 class="text-xl font-semibold text-white">Sohbet</h2>
-                     <button id="clear-chat" type="button" class="text-sm text-gray-400 hover:text-white">Sohbeti Temizle</button>
-                </div>
-                <div id="chat-history" class="flex-grow overflow-y-auto space-y-4 p-2 flex flex-col"></div>
-                <div id="loader" class="hidden self-center my-4">
-                    <div class="chat-loader ease-linear rounded-full border-4 border-t-4 border-gray-500 h-8 w-8"></div>
-                </div>
-                <div id="error-message" class="hidden bg-red-500/20 border border-red-500 text-red-300 px-4 py-3 rounded-lg my-2"></div>
-                <div class="mt-4 flex items-center gap-4">
-                    <textarea id="user-input" rows="1" placeholder="Mesajınızı yazın..." class="w-full bg-gray-700 border border-gray-600 rounded-lg p-3 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"></textarea>
-                    <button id="send-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold p-3 rounded-full transition-colors disabled:bg-gray-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- NASA GÖZLEM PLATFORMU (ADIM 1) -->
-    <div id="nasa-view" class="view">
-  <div class="hubble-skin">
-        <button class="back-to-selection fixed top-5 left-5 z-50 text-slate-400 hover:text-white transition-colors bg-black/20 backdrop-blur-md p-3 rounded-full">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-        </button>
-        <div class="container mx-auto px-4 py-8 max-w-6xl">
-            <header class="text-center mb-8">
-                <h1 class="text-4xl md:text-5xl font-bold text-orange-400">K<span class="text-orange-300">Δ</span>IRA Gözlem Platformu</h1>
-                <p class="text-gray-400 mt-2">NASA'nın Gözünden Evren</p>
-            </header>
-            <div class="mb-6 p-4 bg-gray-800 border border-gray-700 rounded-lg">
-                <label class="block text-sm font-medium text-gray-300 mb-2">API Durumu</label>
-                <div id="nasa-api-status" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-gray-400">Anahtarlar sunucudan bekleniyor...</div>
-            </div>
-            <nav class="flex justify-center space-x-2 md:space-x-4 mb-6 bg-gray-800 p-2 rounded-lg border border-gray-700">
-                <button class="nasa-tab active" data-target="apod-container">Günün Fotoğrafı</button>
-                <button class="nasa-tab" data-target="mars-container">Mars Keşfi</button>
-                <button class="nasa-tab" data-target="library-container">Evrenin Kütüphanesi</button>
-            </nav>
-            <!-- Sky Map Section (Aladin) -->
-            <section id="aladin-section" class="mb-6 p-4 bg-gray-800/60 border border-gray-700 rounded-xl">
-              <h2 class="text-xl font-semibold text-white mb-3">Gökyüzü Haritası</h2>
-              <div class="mb-2">
-                <div class="al-toolbar glass">
-                  <button id="btnGrid" class="al-btn">Izgara</button>
-                  <button id="btnFullSky" class="al-btn">Full Sky</button>
-                  <button id="btnOrion" class="al-btn">Orion</button>
-                  <button id="btnClearExo" class="al-btn">Temizle</button>
-                  <select id="surveySelect" class="al-btn" style="padding:6px 10px">
-                    <option value="P/DSS2/color" selected>DSS2</option>
-                    <option value="P/SDSS9/color">SDSS9</option>
-                    <option value="P/AllWISE/color">AllWISE</option>
-                    <option value="P/2MASS/color">2MASS</option>
-                    <option value="P/PanSTARRS/DR1/color-z-zg-g">Pan-STARRS</option>
-                  </select>
-                </div>
-              </div>
-              <div class="mt-2">
-                <div class="al-toolbar glass">
-                  <button id="tourPrev" class="al-btn">◀︎ Önceki</button>
-                  <button id="tourNext" class="al-btn">Sonraki ▶︎</button>
-                  <select id="tourSelect" class="al-btn" style="padding:6px 10px; min-width: 220px"></select>
-                  <button id="tourPlay" class="al-btn">Oto Tur</button>
-                </div>
-              </div>
-              <div id="aladin-map" class="al-host" style="height:420px;border:1px solid rgba(255,255,255,0.12);border-radius:12px;overflow:hidden">
-                <div class="al-legend">
-                  <span class="al-pill"><span class="dot near"></span> Yakın</span>
-                  <span class="al-pill"><span class="dot mid"></span> Orta</span>
-                  <span class="al-pill"><span class="dot far"></span> Uzak</span>
-                </div>
-                <div id="zoom-controls" class="al-zoom">
-                  <button id="zoom-in" class="al-btn" aria-label="Yakınlaştır">+</button>
-                  <button id="zoom-out" class="al-btn" aria-label="Uzaklaştır">−</button>
-                </div>
-              </div>
-              <p class="text-gray-400 text-sm mt-2">İpucu: sürükle-pan, tekerlek-zoom, sağ tık menü.</p>
-              <div id="exo-info" class="text-gray-400 text-sm mt-1"></div>
-            </section>
-            <main>
-                <div id="apod-container" class="nasa-content active"><div class="text-center text-gray-500 p-8">Adım 2’de etkinleştirilecek.</div></div>
-                <div id="mars-container" class="nasa-content">
-                  <section class="bg-gray-800/60 border border-gray-700 rounded-xl p-4 md:p-6 mb-4">
-                    <div class="grid md:grid-cols-4 gap-3 items-end">
-                      <div>
-                        <label class="block text-sm text-gray-300 mb-1">Rover</label>
-                        <select id="mars-rover" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white">
-                          <option value="curiosity" selected>Curiosity</option>
-                          <option value="perseverance">Perseverance</option>
-                          <option value="opportunity">Opportunity</option>
-                          <option value="spirit">Spirit</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label class="block text-sm text-gray-300 mb-1">Tarih (Dünya)</label>
-                        <input id="mars-date" type="date" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white" />
-                      </div>
-                      <div>
-                        <label class="block text-sm text-gray-300 mb-1">Kamera</label>
-                        <select id="mars-camera" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white">
-                          <option value="">Hepsi</option>
-                          <option value="FHAZ">FHAZ (Front Hazard)</option>
-                          <option value="RHAZ">RHAZ (Rear Hazard)</option>
-                          <option value="MAST">MAST (Mastcam)</option>
-                          <option value="NAVCAM">NAVCAM (Navigation)</option>
-                          <option value="CHEMCAM">CHEMCAM</option>
-                          <option value="MAHLI">MAHLI</option>
-                          <option value="MARDI">MARDI</option>
-                          <option value="PANCAM">PANCAM</option>
-                          <option value="MINITES">MINITES</option>
-                        </select>
-                      </div>
-                      <div class="flex gap-2">
-                        <button id="mars-latest" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-3 py-2 rounded-lg">En Son</button>
-                        <button id="mars-fetch" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-3 py-2 rounded-lg">Getir</button>
-                      </div>
-                    </div>
-                  </section>
-                  <section id="mars-results" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4"></section>
-                </div>
-                <div id="library-container" class="nasa-content"><div class="text-center text-gray-500 p-8">Adım 4’te etkinleştirilecek.</div></div>
-            </main>
-        </div>
-    </div>
-    </div>
-<script type="module" src="js/system-prompt-helpers.js"></script>
-    <!-- Tanılama / Ağ Hatası Yüzeyleme -->
-<script id="diagnostics">
-(function(){
-  function showErr(msg){
-    try {
-      var box = document.getElementById('error-message') || document.getElementById('status');
-      if (box) {
-        if (box.id === 'status') {
-          box.textContent = 'Hata: ' + msg;
-          box.classList.add('text-red-400');
-        } else {
-          box.classList.remove('hidden');
-          box.textContent = 'Hata: ' + msg;
-        }
-      } else { console.error('[KAIRA][UI-ERROR]', msg); }
-    } catch(e) { console.error('[KAIRA][UI-ERROR-FAIL]', e, msg); }
-  }
-  window.__kairaShowError = showErr;
-
-  // Küresel yakalayıcılar
-  window.addEventListener('unhandledrejection', function(ev){
-    var r = ev.reason; var m = (r && r.message) ? r.message : String(r);
-    showErr(m);
-  });
-  window.addEventListener('error', function(ev){
-    var m = ev && ev.message ? ev.message : 'Bilinmeyen JS hatası';
-    if (!/ResizeObserver/.test(m)) showErr(m);
-  }, true);
-
-  // HTTPS uyarısı (mikrofon/TTS için)
-  if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-    console.warn('[KAIRA] Mikrofon/TTS için HTTPS önerilir.');
-  }
-})();
-</script>
-<script type="module" src="js/asistan-init.js"></script>
-
-<script id="chat-logger">
-(function(){
-  // Sunucu kökü (senin ngrok adresin)
-  const SERVER = "https://1513c704aa10.ngrok-free.app";
-
-  function getProvider(){
-    const r = document.querySelector('input[name="provider"]:checked');
-    return r ? r.value : null;
-  }
-  function getModel(){
-    const s = document.getElementById('model-select');
-    return s ? s.value : null;
-  }
-  function getSys(){
-    const t = document.getElementById('system-prompt');
-    return t ? t.value : '';
-  }
-  async function sendLog(obj){
-    try{
-      await fetch(`${SERVER}/api/logs/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': 'true'
-        },
-        body: JSON.stringify(obj)
-      });
-    } catch(e){ console.warn('[CHAT LOG FAIL]', e); }
-  }
-
-  const historyEl = document.getElementById('chat-history');
-  let pending = null; // son kullanıcı mesajının snapshot'ı
-
-  // Gönder butonuna basıldığında kullanıcı mesajını ve meta'yı yakala
-  document.addEventListener('click', (ev)=>{
-    const btn = ev.target.closest('#send-button');
-    if(!btn) return;
-    const userInput = document.getElementById('user-input');
-    const text = userInput ? userInput.value : '';
-    pending = {
-      ts: new Date().toISOString(),
-      provider: getProvider(),
-      model: getModel(),
-      system_prompt: getSys(),
-      user_text: text
-    };
-  }, true);
-
-  // Sohbete yeni balon eklendiğinde asistan cevabını yakala ve logla
-  if(historyEl){
-    const obs = new MutationObserver((muts)=>{
-      for(const m of muts){
-        for(const node of m.addedNodes){
-          if(!(node instanceof Element)) continue;
-          // Asistan balonu
-          if(node.classList.contains('chat-assistant-bubble') || node.matches('.chat-assistant-bubble, [data-chat-item].assistant')){
-            const assistantText = node.textContent.trim();
-            const payload = Object.assign({}, pending || {}, {
-              assistant_text: assistantText
-            });
-            pending = null;
-            sendLog(payload);
-          }
-          // Kullanıcı balonu bazı UI'larda ayrı düşebilir
-          else if(node.classList.contains('chat-user-bubble')){
-            const t = node.textContent.trim();
-            pending = {
-              ts: new Date().toISOString(),
-              provider: getProvider(),
-              model: getModel(),
-              system_prompt: getSys(),
-              user_text: t
-            };
-          }
-        }
-      }
-    });
-    obs.observe(historyEl, { childList: true, subtree: true });
-  }
-
-  // Sohbet temizlendiğinde bilgi amaçlı kısa log at (opsiyonel)
-  document.addEventListener('kaira:chat-cleared', ()=>{
-    sendLog({ ts: new Date().toISOString(), event: 'chat_cleared', provider: getProvider(), model: getModel(), source: 'evrensel-sohbet' });
-  });
-})();
-</script>
-
-    <!-- FOTOĞRAF EDİTÖRÜ İÇİN REACT KODU -->
-    <script type="module" src="js/photo-editor.js"></script>
-
-    <script>window.API_PROXY_BASE = 'https://1513c704aa10.ngrok-free.app';</script>
-    <!-- EVRENSEL SOHBET ARAYÜZÜ İÇİN JAVASCRIPT KODU -->
     <script>
-    window.initializeChatApp = () => {
-        const chatView = document.getElementById('chat-view');
-        const providerSelection = chatView.querySelector('#provider-selection');
-        const modelSelect = chatView.querySelector('#model-select');
-        const systemPromptInput = chatView.querySelector('#system-prompt');
-        const applySystemPromptBtn = chatView.querySelector('#apply-system-prompt');
-        let currentSystemPrompt = systemPromptInput.value.trim();
-        const chatHistoryDiv = chatView.querySelector('#chat-history');
-        const userInput = chatView.querySelector('#user-input');
-        const sendButton = chatView.querySelector('#send-button');
-        const clearChatButton = chatView.querySelector('#clear-chat');
-        const loader = chatView.querySelector('#loader');
-        const errorMessageDiv = chatView.querySelector('#error-message');
+        document.addEventListener('DOMContentLoaded', () => {
+            const dropZone = document.getElementById('drop-zone');
+            const fileInput = document.getElementById('file-input');
+            const imagePreview = document.getElementById('image-preview');
+            const uploadPrompt = document.getElementById('upload-prompt');
+            const editButton = document.getElementById('edit-button');
+            const promptInput = document.getElementById('prompt-input');
+            const resultImage = document.getElementById('result-image');
+            const resultPlaceholder = document.getElementById('result-placeholder');
+            const loader = document.getElementById('loader');
+            const apiKeyInput = document.getElementById('api-key-input');
+            const saveApiKeyButton = document.getElementById('save-api-key-button');
 
-        // --- Sistem Promptu durum rozetini güncelle ---
-        const promptStatus = chatView.querySelector('#system-prompt-status');
-        function setPromptStatus(state){
-            if (!promptStatus) return;
-            promptStatus.dataset.state = state;
-            // Temel sınıf
-            promptStatus.className = 'ml-2 align-middle text-xs px-2 py-0.5 rounded border ';
-            if (state === 'applied') {
-                promptStatus.textContent = 'Uygulandı';
-                promptStatus.className += 'border-emerald-600/40 bg-emerald-600/20 text-emerald-300';
-            } else if (state === 'dirty') {
-                promptStatus.textContent = 'Değişiklik var';
-                promptStatus.className += 'border-amber-600/40 bg-amber-600/20 text-amber-300';
-            } else {
-                promptStatus.textContent = 'Uygulanmadı';
-                promptStatus.className += 'border-gray-600 bg-gray-700/60 text-gray-300';
+            let uploadedImageBase64 = null;
+
+            // Kayıtlı API anahtarını yükle
+            const savedApiKey = localStorage.getItem('gemini-api-key');
+            if (savedApiKey) {
+                apiKeyInput.value = savedApiKey;
             }
-        }
-        function updatePromptStatus(){
-            const inputVal = systemPromptInput.value.trim();
-            if (currentSystemPrompt && inputVal === currentSystemPrompt) return setPromptStatus('applied');
-            if (!currentSystemPrompt && !inputVal) return setPromptStatus('none');
-            return setPromptStatus('dirty');
-        }
-        applySystemPromptBtn.addEventListener('click', () => {
-            currentSystemPrompt = systemPromptInput.value.trim();
-            localStorage.setItem('universalSystemPrompt', currentSystemPrompt);
-            updatePromptStatus();
-        });
-        systemPromptInput.addEventListener('input', updatePromptStatus);
 
-        // Chat-only interactive event safety (capture phase)
-        // Not: Sohbet içindeki etkileşimleri engelleME; sadece dışarıya sızanları durdur
-        ['click','mousedown','mouseup','keydown','keypress','keyup','contextmenu'].forEach(type => {
-            window.addEventListener(type, function(ev){
-                const chatActive = document.getElementById('chat-view')?.classList.contains('active');
-                if (!chatActive) return;
-                const t = ev.target;
-                if (!t) return;
-                // Eğer olay chat-view içinde gerçekleşiyorsa bırak (bizim handler'lar çalışsın)
-                if (t.closest && t.closest('#chat-view')) return;
-                const isInteractive = t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.tagName === 'BUTTON' || t.isContentEditable || t.closest('[role="button"]');
-                if (isInteractive) {
-                    ev.stopImmediatePropagation();
-                    // Do NOT call preventDefault → native behavior devam eder
+            // API anahtarını kaydetme
+            saveApiKeyButton.addEventListener('click', () => {
+                const apiKey = apiKeyInput.value.trim();
+                if (apiKey) {
+                    localStorage.setItem('gemini-api-key', apiKey);
+                    showToast('API Anahtarı başarıyla kaydedildi.', 'success');
+                } else {
+                    showToast('Lütfen geçerli bir API anahtarı girin.');
                 }
-            }, true);
-        });
-
-        // --- API Key alanları ve butonlar (yerel referanslar) ---
-        const groqKeyContainer = chatView.querySelector('#groq-key-container');
-        const googleKeyContainer = chatView.querySelector('#google-key-container');
-        const groqApiKeyInput = chatView.querySelector('#groq-api-key');
-        const googleApiKeyInput = chatView.querySelector('#google-api-key');
-        const apiStatusDiv = chatView.querySelector('#api-status');
-        const fetchKeysBtn = chatView.querySelector('#fetch-keys-btn');
-        const toggleGroqKeyBtn = chatView.querySelector('#toggle-groq-key');
-        const toggleGoogleKeyBtn = chatView.querySelector('#toggle-google-key');
-
-        function toggleMask(inputEl, btnEl){
-            if (!inputEl || !btnEl) return;
-            inputEl.type = inputEl.type === 'password' ? 'text' : 'password';
-            btnEl.classList.toggle('text-yellow-300');
-        }
-
-        const PROVIDERS = {
-            groq: {
-                name: 'Groq',
-                apiEndpoint: 'https://api.groq.com/openai/v1/chat/completions',
-                models: [
-                    'llama-3.1-8b-instant','llama-3.3-70b-versatile','meta-llama/llama-guard-4-12b',
-                    'openai/gpt-oss-120b','openai/gpt-oss-20b','deepseek-r1-distill-llama-70b',
-                    'meta-llama/llama-4-maverick-17b-128e-instruct','meta-llama/llama-4-scout-17b-16e-instruct',
-                    'meta-llama/llama-prompt-guard-2-22m','meta-llama/llama-prompt-guard-2-86m',
-                    'moonshotai/kimi-k2-instruct','qwen/qwen3-32b','llama3-70b-8192', 
-                    'llama3-8b-8192', 'mixtral-8x7b-32768', 'gemma-7b-it'
-                ]
-            },
-            google: {
-                name: 'Google',
-                apiEndpoint: 'https://generativelanguage.googleapis.com/v1beta/models/',
-                models: [
-                    'gemini-2.5-pro',
-                    'gemini-2.5-flash',
-                    'gemini-2.5-flash-lite',
-                    'gemini-1.5-pro',
-                    'gemini-1.5-flash'
-                ]
-            }
-        };
-
-        let chatHistory = [];
-
-        function updateModelList() {
-            const selectedProvider = chatView.querySelector('input[name="provider"]:checked').value;
-            modelSelect.innerHTML = '';
-            PROVIDERS[selectedProvider].models.forEach(model => {
-                const option = document.createElement('option');
-                option.value = model;
-                option.textContent = model;
-                modelSelect.appendChild(option);
             });
-            groqKeyContainer.classList.toggle('hidden', selectedProvider !== 'groq');
-            googleKeyContainer.classList.toggle('hidden', selectedProvider !== 'google');
-        }
 
-        function addMessageToUI(role, content) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `max-w-xl lg:max-w-2xl px-4 py-2 rounded-lg text-white ${role === 'user' ? 'chat-user-bubble' : 'chat-assistant-bubble'}`;
-            messageDiv.textContent = content;
-            chatHistoryDiv.appendChild(messageDiv);
-            chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
-        }
+            // Dosya seçme penceresini açmak için
+            dropZone.addEventListener('click', () => fileInput.click());
 
-        function showError(message) {
-            errorMessageDiv.textContent = `Hata: ${message}`;
-            errorMessageDiv.classList.remove('hidden');
-        }
-
-        function saveChatHistory() {
-            localStorage.setItem('universalChatHistory', JSON.stringify(chatHistory));
-        }
-
-        function loadChatHistory() {
-            const savedHistory = localStorage.getItem('universalChatHistory');
-            if (savedHistory) {
-                chatHistory = JSON.parse(savedHistory);
-                chatHistory.forEach(msg => addMessageToUI(msg.role, msg.content));
-            }
-        }
-        
-        function loadSettings() {
-            const savedGroqKey = localStorage.getItem('groqApiKey');
-            if (savedGroqKey) groqApiKeyInput.value = savedGroqKey;
-            const savedGoogleKey = localStorage.getItem('googleApiKey');
-            if (savedGoogleKey) googleApiKeyInput.value = savedGoogleKey;
-            const savedPrompt = localStorage.getItem('universalSystemPrompt');
-            if (savedPrompt) {
-                // Yalnızca alanı doldur; aktif yapmak için kullanıcı 'Promptu Uygula'ya basmalı
-                systemPromptInput.value = savedPrompt;
-            }
-        }
-
-        async function fetchApiKeys() {
-            apiStatusDiv.textContent = "Anahtarlar sunucudan bekleniyor...";
-            const base = window.API_PROXY_BASE || '';
-            try {
-                const opts = { headers: { 'ngrok-skip-browser-warning': 'true' } };
-                const [groqRes, googleRes] = await Promise.all([
-                    fetch(`${base}/api/get-groq-key`, opts),
-                    fetch(`${base}/api/get-google-key`, opts)
-                ]);
-                const groqData = await groqRes.json();
-                const googleData = await googleRes.json();
-                if (groqData.apiKey) {
-                    groqApiKeyInput.value = groqData.apiKey;
-                    localStorage.setItem('groqApiKey', groqData.apiKey);
-                }
-                if (googleData.apiKey) {
-                    googleApiKeyInput.value = googleData.apiKey;
-                    localStorage.setItem('googleApiKey', googleData.apiKey);
-                }
-                apiStatusDiv.textContent = "Anahtarlar başarıyla alındı!";
-            } catch (err) {
-                apiStatusDiv.textContent = "Anahtarlar alınamadı: " + (err.message || err);
-            }
-        }
-
-        async function handleSend() {
-            const selectedProvider = chatView.querySelector('input[name="provider"]:checked').value;
-            const selectedModel = modelSelect.value;
-            const apiKey = selectedProvider === 'groq' ? groqApiKeyInput.value.trim() : googleApiKeyInput.value.trim();
-            const systemPrompt = currentSystemPrompt;
-            const userMessage = userInput.value.trim();
-
-            if (!apiKey) {
-                showError(`Lütfen ${PROVIDERS[selectedProvider].name} API anahtarınızı girin.`);
-                return;
-            }
-            if (!userMessage) return;
-
-            sendButton.disabled = true;
-            userInput.value = '';
-            loader.classList.remove('hidden');
-            errorMessageDiv.classList.add('hidden');
-            
-            addMessageToUI('user', userMessage);
-            chatHistory.push({ role: 'user', content: userMessage });
-
-            const conversationContext = chatHistory.slice(-11, -1); 
-            
-            let apiEndpoint = PROVIDERS[selectedProvider].apiEndpoint;
-            let headers = { 'Content-Type': 'application/json' };
-            let body;
-
-            if (selectedProvider === 'groq') {
-                headers['Authorization'] = `Bearer ${apiKey}`;
-                let messages = [];
-                const isClassificationModel = selectedModel.includes('guard');
-                if (isClassificationModel) {
-                    messages.push({ role: 'user', content: userMessage });
-                } else {
-                    if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
-                    messages.push(...conversationContext); 
-                    messages.push({ role: 'user', content: userMessage });
-                }
-                body = JSON.stringify({ model: selectedModel, messages: messages });
-            } else if (selectedProvider === 'google') {
-                apiEndpoint += `${selectedModel}:generateContent?key=${apiKey}`;
-                const contents = conversationContext.map(msg => ({
-                    role: msg.role === 'assistant' ? 'model' : 'user',
-                    parts: [{ text: msg.content }]
-                }));
-                contents.push({ role: 'user', parts: [{ text: userMessage }] });
-                let payload = { contents };
-                if (systemPrompt) {
-                    payload.systemInstruction = { parts: [{ text: systemPrompt }] };
-                }
-                body = JSON.stringify(payload);
-            }
-
-            try {
-                const response = await fetch(apiEndpoint, { method: 'POST', headers, body });
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error?.message || `HTTP hatası! Durum: ${response.status}`);
-                }
-                const data = await response.json();
-                
-                let assistantMessage;
-                if (selectedProvider === 'groq') {
-                    assistantMessage = data.choices[0]?.message?.content;
-                } else if (selectedProvider === 'google') {
-                    assistantMessage = data.candidates[0]?.content?.parts[0]?.text;
-                }
-
-                if (assistantMessage) {
-                    addMessageToUI('assistant', assistantMessage.trim());
-                    chatHistory.push({ role: 'assistant', content: assistantMessage.trim() });
-                    saveChatHistory();
-                } else {
-                    showError("API'den geçerli bir yanıt alınamadı.");
-                }
-            } catch (error) {
-                console.error("API Hatası:", error);
-                showError(error.message);
-                chatHistory.pop(); 
-            } finally {
-                sendButton.disabled = false;
-                loader.classList.add('hidden');
-            }
-        }
-
-        providerSelection.addEventListener('change', updateModelList);
-        sendButton.addEventListener('click', handleSend);
-        userInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
+            // Sürükle-bırak olayları
+            dropZone.addEventListener('dragover', (e) => {
                 e.preventDefault();
-                handleSend();
-            }
-        });
-        clearChatButton.addEventListener('click', (e) => {
-            e.preventDefault();
-            try { if (window.__kairaClearChat) window.__kairaClearChat(); } catch(_){ }
-            chatHistory = [];
-            if (chatHistoryDiv) chatHistoryDiv.innerHTML = '';
-            try { localStorage.removeItem('universalChatHistory'); } catch(_){}
-            try { localStorage.removeItem('chatHistory'); } catch(_){}
-            // Sistem promptunu da sıfırla
-            currentSystemPrompt = '';
-            if (systemPromptInput) systemPromptInput.value = '';
-            if (typeof updatePromptStatus === 'function') updatePromptStatus();
-        });
-
-        groqApiKeyInput.addEventListener('input', () => localStorage.setItem('groqApiKey', groqApiKeyInput.value));
-        googleApiKeyInput.addEventListener('input', () => localStorage.setItem('googleApiKey', googleApiKeyInput.value));
-
-        if (fetchKeysBtn) fetchKeysBtn.addEventListener('click', fetchApiKeys);
-        if (toggleGroqKeyBtn) toggleGroqKeyBtn.addEventListener('click', () => toggleMask(groqApiKeyInput, toggleGroqKeyBtn));
-        if (toggleGoogleKeyBtn) toggleGoogleKeyBtn.addEventListener('click', () => toggleMask(googleApiKeyInput, toggleGoogleKeyBtn));
-
-        updateModelList();
-        loadChatHistory();
-        loadSettings();
-        updatePromptStatus();
-        fetchApiKeys();
-    };
-    </script>
-    
-    <script id="mic-explicit-consent-guard">
-(function(){
-  // Default: microphone is NOT allowed until the user taps the mic button
-  window.__micExplicitConsent = false;
-
-  // Centralized audio controls: track active MediaStream and SpeechRecognition
-  window.KAIRA_AUDIO = (function(){
-    let _stream = null;     // MediaStream from getUserMedia
-    let _recognizer = null; // Web Speech API instance
-    return {
-      setStream(s){ _stream = s || null; },
-      setRecognizer(r){ _recognizer = r || null; },
-      stopStream(){
-        try { if (_stream) { _stream.getTracks().forEach(t => t.stop()); } } catch(_){}
-        _stream = null;
-      },
-      stopRecognizer(){
-        try { if (_recognizer && typeof _recognizer.stop === 'function') { _recognizer.stop(); } } catch(_){}
-        _recognizer = null;
-      },
-      stopAll(){ this.stopRecognizer(); this.stopStream(); }
-    };
-  })();
-
-  // Patch getUserMedia so any auto-attempts to grab audio fail without an explicit tap
-  try {
-    const md = navigator.mediaDevices;
-    if (md && md.getUserMedia) {
-      const origGUM = md.getUserMedia.bind(md);
-      md.getUserMedia = function(constraints){
-        try {
-          const wantsAudio = constraints && (constraints.audio !== false) && (typeof constraints.audio !== 'undefined');
-          if (wantsAudio && !window.__micExplicitConsent) {
-            return Promise.reject(new DOMException('Microphone blocked: explicit user gesture required', 'NotAllowedError'));
-          }
-        } catch(_){ /* noop */ }
-        // --- Patch: capture stream for KAIRA_AUDIO ---
-        return Promise.resolve(origGUM(constraints)).then(stream => {
-          try { if (window.KAIRA_AUDIO) window.KAIRA_AUDIO.setStream(stream); } catch(_){}
-          return stream;
-        });
-      };
-    }
-  } catch(_){ /* noop */ }
-
-  // Patch Web Speech API start() so it won't run without a trusted tap
-  try {
-    const WSR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (WSR && WSR.prototype && WSR.prototype.start) {
-      const origStart = WSR.prototype.start;
-      WSR.prototype.start = function(){
-        if (!window.__micExplicitConsent) {
-          console.warn('[KAIRA] SpeechRecognition.start blocked until mic button is pressed');
-          return; // silently ignore
-        }
-        try { if (window.KAIRA_AUDIO) window.KAIRA_AUDIO.setRecognizer(this); } catch(_){}
-        return origStart.apply(this, arguments);
-      };
-    }
-  } catch(_){ /* noop */ }
-
-  // Global capture: only a **trusted** click on a mic button toggles consent ON
-  window.addEventListener('click', function(ev){
-    const t = ev.target;
-    if (!ev.isTrusted) return; // ignore synthetic clicks
-    if (!t) return;
-    const mic = (t.id === 'mic-btn' || t.id === 'asistan-mic-btn')
-      ? t
-      : (t.closest ? t.closest('#mic-btn, #asistan-mic-btn') : null);
-    if (mic) {
-      window.__micExplicitConsent = true;
-      console.log('[KAIRA] Microphone explicitly enabled by user.');
-    }
-  }, true);
-
-  // Helper API for view switching
-  window.KAIRA_MIC_GUARD = {
-    revoke(){ window.__micExplicitConsent = false; },
-    allow(){ window.__micExplicitConsent = true; }
-  };
-
-  // When screen/tab goes hidden (screen off, app background), HARD-STOP audio capture & revoke consent
-  function kairaHardStopMic(){
-    try { if (window.KAIRA_AUDIO) window.KAIRA_AUDIO.stopAll(); } catch(_){}
-    try { if (window.KAIRA_MIC_GUARD && typeof window.KAIRA_MIC_GUARD.revoke === 'function') window.KAIRA_MIC_GUARD.revoke(); } catch(_){}
-    console.log('[KAIRA] Mic hard-stopped due to hidden/teardown');
-  }
-  document.addEventListener('visibilitychange', function(){
-    if (document.visibilityState !== 'visible') {
-      kairaHardStopMic();
-    }
-  });
-  window.addEventListener('pagehide', function(){ kairaHardStopMic(); }, { capture: true });
-  window.addEventListener('blur', function(){
-    // Optional: some mobile browsers fire blur when locking screen; be conservative and stop
-    if (document.visibilityState !== 'visible') kairaHardStopMic();
-  }, true);
-})();
-</script>
-    
-    <!-- EVRENSEL SOHBET ARAYÜZÜ İÇİN JAVASCRIPT KODU -->
-    <script>
-        // --- DOM Elementleri ---
-        const providerSelection = document.getElementById('provider-selection');
-        const modelSelect = document.getElementById('model-select');
-        const groqKeyContainer = document.getElementById('groq-key-container');
-        const googleKeyContainer = document.getElementById('google-key-container');
-        const groqApiKeyInput = document.getElementById('groq-api-key');
-        const googleApiKeyInput = document.getElementById('google-api-key');
-        const systemPromptInput = document.getElementById('system-prompt');
-        const applySystemPromptBtn = document.getElementById('apply-system-prompt');
-        let currentSystemPrompt = systemPromptInput.value.trim();
-        const chatHistoryDiv = document.getElementById('chat-history');
-        const userInput = document.getElementById('user-input');
-        const sendButton = document.getElementById('send-button');
-        const clearChatButton = document.getElementById('clear-chat');
-        const loader = document.getElementById('loader');
-        const errorMessageDiv = document.getElementById('error-message');
-        const apiStatusDiv = document.getElementById('api-status');
-        const fetchKeysBtn = document.getElementById('fetch-keys-btn');
-        const toggleGroqKeyBtn = document.getElementById('toggle-groq-key');
-        const toggleGoogleKeyBtn = document.getElementById('toggle-google-key');
-
-        function toggleMask(inputEl, btnEl){
-            inputEl.type = inputEl.type === 'password' ? 'text' : 'password';
-            btnEl.classList.toggle('text-yellow-300');
-        }
-
-        // --- Sistem Promptu durum rozetini güncelle ---
-        const promptStatus2 = document.getElementById('system-prompt-status');
-        function setPromptStatus2(state){
-            if (!promptStatus2) return;
-            promptStatus2.dataset.state = state;
-            promptStatus2.className = 'ml-2 align-middle text-xs px-2 py-0.5 rounded border ';
-            if (state === 'applied') {
-                promptStatus2.textContent = 'Uygulandı';
-                promptStatus2.className += 'border-emerald-600/40 bg-emerald-600/20 text-emerald-300';
-            } else if (state === 'dirty') {
-                promptStatus2.textContent = 'Değişiklik var';
-                promptStatus2.className += 'border-amber-600/40 bg-amber-600/20 text-amber-300';
-            } else {
-                promptStatus2.textContent = 'Uygulanmadı';
-                promptStatus2.className += 'border-gray-600 bg-gray-700/60 text-gray-300';
-            }
-        }
-        function updatePromptStatus2(){
-            const inputVal = systemPromptInput.value.trim();
-            if (currentSystemPrompt && inputVal === currentSystemPrompt) return setPromptStatus2('applied');
-            if (!currentSystemPrompt && !inputVal) return setPromptStatus2('none');
-            return setPromptStatus2('dirty');
-        }
-        applySystemPromptBtn.addEventListener('click', () => {
-            currentSystemPrompt = systemPromptInput.value.trim();
-            localStorage.setItem('universalSystemPrompt', currentSystemPrompt);
-            updatePromptStatus2();
-        });
-        systemPromptInput.addEventListener('input', updatePromptStatus2);
-
-        // --- Model Bilgileri ---
-        const PROVIDERS = {
-            groq: {
-                name: 'Groq',
-                apiEndpoint: 'https://api.groq.com/openai/v1/chat/completions',
-                models: [
-                    'llama-3.1-8b-instant',
-                    'llama-3.3-70b-versatile',
-                    'meta-llama/llama-guard-4-12b',
-                    'openai/gpt-oss-120b',
-                    'openai/gpt-oss-20b',
-                    'deepseek-r1-distill-llama-70b',
-                    'meta-llama/llama-4-maverick-17b-128e-instruct',
-                    'meta-llama/llama-4-scout-17b-16e-instruct',
-                    'meta-llama/llama-prompt-guard-2-22m',
-                    'meta-llama/llama-prompt-guard-2-86m',
-                    'moonshotai/kimi-k2-instruct',
-                    'qwen/qwen3-32b',
-                    'llama3-70b-8192', 
-                    'llama3-8b-8192', 
-                    'mixtral-8x7b-32768', 
-                    'gemma-7b-it'
-                ]
-            },
-            google: {
-                name: 'Google',
-                apiEndpoint: 'https://generativelanguage.googleapis.com/v1beta/models/',
-                models: [
-                    'gemini-2.5-pro',
-                    'gemini-2.5-flash',
-                    'gemini-2.5-flash-lite',
-                    'gemini-1.5-pro',
-                    'gemini-1.5-flash'
-                ]
-            }
-        };
-
-        let chatHistory = [];
-
-        // --- Fonksiyonlar ---
-
-        function updateModelList() {
-            const selectedProvider = document.querySelector('input[name="provider"]:checked').value;
-            modelSelect.innerHTML = '';
-            PROVIDERS[selectedProvider].models.forEach(model => {
-                const option = document.createElement('option');
-                option.value = model;
-                option.textContent = model;
-                modelSelect.appendChild(option);
+                dropZone.classList.add('drop-zone-active');
             });
-            groqKeyContainer.classList.toggle('hidden', selectedProvider !== 'groq');
-            googleKeyContainer.classList.toggle('hidden', selectedProvider !== 'google');
-        }
 
-        function addMessageToUI(role, content) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `max-w-xl lg:max-w-2xl px-4 py-2 rounded-lg text-white ${role === 'user' ? 'user-bubble' : 'assistant-bubble'}`;
-            messageDiv.textContent = content;
-            chatHistoryDiv.appendChild(messageDiv);
-            chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
-        }
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('drop-zone-active');
+            });
 
-        function showError(message) {
-            errorMessageDiv.textContent = `Hata: ${message}`;
-            errorMessageDiv.classList.remove('hidden');
-        }
-
-        function saveChatHistory() {
-            localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
-        }
-
-        function loadChatHistory() {
-            const savedHistory = localStorage.getItem('chatHistory');
-            if (savedHistory) {
-                chatHistory = JSON.parse(savedHistory);
-                chatHistory.forEach(msg => addMessageToUI(msg.role, msg.content));
-            }
-        }
-        
-        // YENİ FONKSİYON: Kaydedilmiş ayarları (API anahtarları) yükler
-        function loadSettings() {
-            const savedGroqKey = localStorage.getItem('groqApiKey');
-            if (savedGroqKey) {
-                groqApiKeyInput.value = savedGroqKey;
-            }
-            const savedGoogleKey = localStorage.getItem('googleApiKey');
-            if (savedGoogleKey) {
-                googleApiKeyInput.value = savedGoogleKey;
-            }
-            const savedPrompt = localStorage.getItem('universalSystemPrompt');
-            if (savedPrompt) {
-                // Yalnızca alanı doldur; aktif yapmak için kullanıcı 'Promptu Uygula'ya basmalı
-                systemPromptInput.value = savedPrompt;
-            }
-        }
-
-        async function handleSend() {
-            const selectedProvider = document.querySelector('input[name="provider"]:checked').value;
-            const selectedModel = modelSelect.value;
-            const apiKey = selectedProvider === 'groq' ? groqApiKeyInput.value.trim() : googleApiKeyInput.value.trim();
-            const systemPrompt = currentSystemPrompt;
-            const userMessage = userInput.value.trim();
-
-            if (!apiKey) {
-                showError(`Lütfen ${PROVIDERS[selectedProvider].name} API anahtarınızı girin.`);
-                return;
-            }
-            if (!userMessage) return;
-
-            sendButton.disabled = true;
-            userInput.value = '';
-            loader.classList.remove('hidden');
-            errorMessageDiv.classList.add('hidden');
-            
-            addMessageToUI('user', userMessage);
-            chatHistory.push({ role: 'user', content: userMessage });
-
-            const conversationContext = chatHistory.slice(-11, -1); 
-            
-            let apiEndpoint = PROVIDERS[selectedProvider].apiEndpoint;
-            let headers = { 'Content-Type': 'application/json' };
-            let body;
-
-            if (selectedProvider === 'groq') {
-                headers['Authorization'] = `Bearer ${apiKey}`;
-                let messages = [];
-
-                const isClassificationModel = [
-                    'meta-llama/llama-guard-4-12b',
-                    'meta-llama/llama-prompt-guard-2-22m',
-                    'meta-llama/llama-prompt-guard-2-86m'
-                ].includes(selectedModel);
-
-                if (isClassificationModel) {
-                    messages.push({ role: 'user', content: userMessage });
-                } else {
-                    if (systemPrompt) messages.push({ role: 'system', content: systemPrompt });
-                    messages.push(...conversationContext); 
-                    messages.push({ role: 'user', content: userMessage });
-                }
-                
-                body = JSON.stringify({
-                    model: selectedModel,
-                    messages: messages
-                });
-
-            } else if (selectedProvider === 'google') {
-                apiEndpoint += `${selectedModel}:generateContent?key=${apiKey}`;
-                
-                const contents = conversationContext.map(msg => ({
-                    role: msg.role === 'assistant' ? 'model' : 'user',
-                    parts: [{ text: msg.content }]
-                }));
-                contents.push({ role: 'user', parts: [{ text: userMessage }] });
-
-                let payload = { contents };
-                if (systemPrompt) {
-                    payload.systemInstruction = { parts: [{ text: systemPrompt }] };
-                }
-                body = JSON.stringify(payload);
-            }
-
-            try {
-                const response = await fetch(apiEndpoint, { method: 'POST', headers, body });
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error?.message || `HTTP hatası! Durum: ${response.status}`);
-                }
-                const data = await response.json();
-                
-                let assistantMessage;
-                if (selectedProvider === 'groq') {
-                    assistantMessage = data.choices[0]?.message?.content;
-                } else if (selectedProvider === 'google') {
-                    assistantMessage = data.candidates[0]?.content?.parts[0]?.text;
-                }
-
-                if (assistantMessage) {
-                    addMessageToUI('assistant', assistantMessage.trim());
-                    chatHistory.push({ role: 'assistant', content: assistantMessage.trim() });
-                    saveChatHistory();
-                } else {
-                    showError("API'den geçerli bir yanıt alınamadı.");
-                }
-
-            } catch (error) {
-                console.error("API Hatası:", error);
-                showError(error.message);
-                chatHistory.pop(); 
-            } finally {
-                sendButton.disabled = false;
-                loader.classList.add('hidden');
-            }
-        }
-
-        // --- Event Listeners ---
-        providerSelection.addEventListener('change', updateModelList);
-        sendButton.addEventListener('click', handleSend);
-        userInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
+            dropZone.addEventListener('drop', (e) => {
                 e.preventDefault();
-                handleSend();
+                dropZone.classList.remove('drop-zone-active');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    fileInput.files = files;
+                    handleFileSelect({ target: fileInput });
+                }
+            });
+
+            // Dosya seçildiğinde
+            fileInput.addEventListener('change', handleFileSelect);
+
+            function handleFileSelect(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        uploadedImageBase64 = e.target.result.split(',')[1]; // Base64 verisini al
+                        imagePreview.src = e.target.result;
+                        imagePreview.classList.remove('hidden');
+                        uploadPrompt.classList.add('hidden');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            }
+            
+            // Özel bildirim fonksiyonu
+            function showToast(message, type = 'error') {
+                const toast = document.createElement('div');
+                toast.textContent = message;
+                toast.className = 'toast';
+                if (type === 'success') {
+                    toast.classList.add('success');
+                }
+                document.body.appendChild(toast);
+                setTimeout(() => { toast.classList.add('show'); }, 100);
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    setTimeout(() => { document.body.removeChild(toast); }, 300);
+                }, 3000);
+            }
+
+            // Düzenle butonuna tıklama olayı
+            editButton.addEventListener('click', async () => {
+                const apiKey = apiKeyInput.value.trim();
+                if (!apiKey) {
+                    showToast('Lütfen API anahtarınızı girip kaydedin.');
+                    return;
+                }
+                if (!uploadedImageBase64) {
+                    showToast('Lütfen önce bir fotoğraf yükleyin.');
+                    return;
+                }
+                const prompt = promptInput.value.trim();
+                if (!prompt) {
+                    showToast('Lütfen bir düzenleme komutu girin.');
+                    return;
+                }
+
+                setLoading(true);
+
+                try {
+                    const generatedImage = await generateImageWithGemini(prompt, uploadedImageBase64, apiKey);
+                    if(generatedImage) {
+                       resultImage.src = `data:image/png;base64,${generatedImage}`;
+                       resultImage.classList.remove('hidden');
+                       resultPlaceholder.classList.add('hidden');
+                    } else {
+                       throw new Error("API'den resim verisi alınamadı.");
+                    }
+                } catch (error) {
+                    console.error('Hata:', error);
+                    showToast('Bir hata oluştu: ' + error.message);
+                    resultPlaceholder.textContent = 'İşlem başarısız oldu. Lütfen tekrar deneyin.';
+                    resultPlaceholder.classList.remove('hidden');
+                    resultImage.classList.add('hidden');
+                } finally {
+                    setLoading(false);
+                }
+            });
+
+            function setLoading(isLoading) {
+                if (isLoading) {
+                    editButton.disabled = true;
+                    editButton.textContent = 'İşleniyor...';
+                    loader.classList.remove('hidden');
+                    resultImage.classList.add('hidden');
+                    resultPlaceholder.classList.add('hidden');
+                } else {
+                    editButton.disabled = false;
+                    editButton.textContent = 'Düzenle';
+                    loader.classList.add('hidden');
+                }
+            }
+
+            // Gemini API'sine istek gönderme fonksiyonu
+            async function generateImageWithGemini(prompt, imageBase64, apiKey) {
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent?key=${apiKey}`;
+
+                const payload = {
+                    contents: [{
+                        parts: [
+                            { text: prompt },
+                            {
+                                inlineData: {
+                                    mimeType: "image/png",
+                                    data: imageBase64
+                                }
+                            }
+                        ]
+                    }],
+                    generationConfig: {
+                        responseModalities: ['IMAGE']
+                    },
+                };
+                
+                let lastError = null;
+                for (let i = 0; i < 3; i++) {
+                    try {
+                        const response = await fetch(apiUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(payload)
+                        });
+
+                        if (!response.ok) {
+                            const errorBody = await response.json();
+                            throw new Error(`API hatası: ${response.status} - ${errorBody.error?.message || 'Bilinmeyen hata'}`);
+                        }
+
+                        const result = await response.json();
+                        const base64Data = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData)?.inlineData?.data;
+
+                        if (!base64Data) {
+                            throw new Error("API yanıtında beklenen resim verisi bulunamadı.");
+                        }
+                        
+                        return base64Data;
+                    } catch (error) {
+                        lastError = error;
+                        console.warn(`Deneme ${i+1} başarısız. Tekrar deneniyor...`);
+                        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+                    }
+                }
+                throw lastError;
             }
         });
-        clearChatButton.addEventListener('click', (e) => {
-            e.preventDefault();
-            try { if (window.__kairaClearChat) window.__kairaClearChat(); } catch(_){ }
-            chatHistory = [];
-            if (chatHistoryDiv) chatHistoryDiv.innerHTML = '';
-            try { localStorage.removeItem('universalChatHistory'); } catch(_){}
-            try { localStorage.removeItem('chatHistory'); } catch(_){}
-            currentSystemPrompt = '';
-            if (systemPromptInput) systemPromptInput.value = '';
-            if (typeof updatePromptStatus2 === 'function') updatePromptStatus2();
-        });
-
-        // YENİ EVENT LISTENERS: API anahtarlarını yazıldıkça kaydeder
-        groqApiKeyInput.addEventListener('input', () => {
-            localStorage.setItem('groqApiKey', groqApiKeyInput.value);
-        });
-        googleApiKeyInput.addEventListener('input', () => {
-            localStorage.setItem('googleApiKey', googleApiKeyInput.value);
-        });
-
-        // --- Başlangıç ---
-        updateModelList();
-        loadChatHistory();
-        loadSettings(); // YENİ: Kaydedilmiş ayarları yükle
-        updatePromptStatus2();
-
     </script>
-
-
-    <script type="module" src="js/intro-controls.js"></script>
-    <script type="module" src="js/exoplanet-map.js"></script>
-    <script type="module" src="js/nasa-apod.js"></script>
-    <script type="module" src="js/intro-animation.js"></script>
-<script src="js/kaira-debug-toggle.js"></script>
-<script src="js/form-input-safety.js"></script>
-<script type="module" src="js/default-system-prompt.js"></script>
-<script type="module" src="js/main-controller.js"></script>
 </body>
 </html>
+
